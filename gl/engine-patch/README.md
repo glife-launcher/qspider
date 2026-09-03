@@ -13,7 +13,7 @@ three behavioral patches matching the classic 5.8 player:
    no-op when a value is expected** (one branch in mathops.c's expression
    compiler, next to unary minus). Modern libqsp has no unary plus at all
    (`+` registered binary-only) and raises error 27 QSP_ERR_SYNTAX; classic
-   5.8 accepts it (owner-verified on the desktop player). Girl Life 0.9.9.1
+   5.8 accepts it (verified by hand on the desktop player). Girl Life 0.9.9.1
    `food_menu.qsrc` line 740 has a standalone `+$_str` statement (the shared
    dine-in menu of ~20 eateries), so on a stock engine "order from the menu"
    errors out and the location's buttons die until re-entry. Upstream master
@@ -23,10 +23,10 @@ three behavioral patches matching the classic 5.8 player:
    true is `-1` and `AND`/`OR` are bitwise with both operands always
    evaluated.** See the v4 section below.
 
-## v4 — SHIPPED 2026-08-20 (owner approved)
+## v4 — SHIPPED 2026-08-20
 
-Shipped with explicit owner approval on 2026-08-20, on **automated
-verification only** (no hand-test — owner's call). `qsp-engine-classic.wasm`
+Shipped 2026-08-20 on **automated verification only** (no hand-test; a
+deliberate decision, recorded here). `qsp-engine-classic.wasm`
 **is** the v4 build; the test stand, `launcher/player/` and `fetch-player.sh`
 all serve it.
 
@@ -161,8 +161,7 @@ glue references it by hashed name).
   vegetarian Piroshki…"), and the v2 case re-verified (hotel maid act
   appears). Export set byte-identical to v2's (checked via
   WebAssembly.Module.exports against the shipped v2 wasm).
-- Verified 2026-08-20 (v4), **automated only — no hand-test, owner's explicit
-  call**: conformance suite **31/31** against the wasm the stand serves (the
+- Verified 2026-08-20 (v4), **automated only — no hand-test, by decision**: conformance suite **31/31** against the wasm the stand serves (the
   `EXPECT_V4` gate deleted, so the `h.` group is binding) + in-game on the
   0.9.9.1 stand via the cheat console: colour customiser returns real channels
   (`extract_color_component` red/green → 255, `theme_customize_increment` →
