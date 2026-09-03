@@ -1,0 +1,65 @@
+diff --git a/qsp/mathops.c b/qsp/mathops.c
+index bb9c4ca..78af5bb 100644
+--- a/qsp/mathops.c
++++ b/qsp/mathops.c
+@@ -901,37 +901,23 @@ QSPVariant qspCalculateValue(QSPMathExpression *expression, int valueIndex) /* t
+         }
+         switch (opCode)
+         {
+-        case qspOpAnd: /* logical AND operator, we don't pre-evaluate arguments */
++        case qspOpAnd: /* classic 5.8: BITWISE AND, both arguments always evaluated */
+             args[0] = qspCalculateArgumentValue(expression, argIndices[0], QSP_TYPE_NUM);
+             if (qspLocationState != oldLocationState)
+                 return qspGetEmptyVariant(QSP_TYPE_UNDEF);
+-            if (QSP_ISTRUE(QSP_NUM(args[0])))
+-            {
+-                args[1] = qspCalculateArgumentValue(expression, argIndices[1], QSP_TYPE_NUM);
+-                if (qspLocationState != oldLocationState)
+-                    return qspGetEmptyVariant(QSP_TYPE_UNDEF);
+-                QSP_NUM(tos) = QSP_TOBOOL(QSP_NUM(args[1]));
+-            }
+-            else
+-            {
+-                QSP_NUM(tos) = QSP_TOBOOL(QSP_FALSE);
+-            }
++            args[1] = qspCalculateArgumentValue(expression, argIndices[1], QSP_TYPE_NUM);
++            if (qspLocationState != oldLocationState)
++                return qspGetEmptyVariant(QSP_TYPE_UNDEF);
++            QSP_NUM(tos) = QSP_NUM(args[0]) & QSP_NUM(args[1]);
+             return tos;
+-        case qspOpOr: /* logical OR operator, we don't pre-evaluate arguments */
++        case qspOpOr: /* classic 5.8: BITWISE OR, both arguments always evaluated */
+             args[0] = qspCalculateArgumentValue(expression, argIndices[0], QSP_TYPE_NUM);
+             if (qspLocationState != oldLocationState)
+                 return qspGetEmptyVariant(QSP_TYPE_UNDEF);
+-            if (QSP_ISTRUE(QSP_NUM(args[0])))
+-            {
+-                QSP_NUM(tos) = QSP_TOBOOL(QSP_TRUE);
+-            }
+-            else
+-            {
+-                args[1] = qspCalculateArgumentValue(expression, argIndices[1], QSP_TYPE_NUM);
+-                if (qspLocationState != oldLocationState)
+-                    return qspGetEmptyVariant(QSP_TYPE_UNDEF);
+-                QSP_NUM(tos) = QSP_TOBOOL(QSP_NUM(args[1]));
+-            }
++            args[1] = qspCalculateArgumentValue(expression, argIndices[1], QSP_TYPE_NUM);
++            if (qspLocationState != oldLocationState)
++                return qspGetEmptyVariant(QSP_TYPE_UNDEF);
++            QSP_NUM(tos) = QSP_NUM(args[0]) | QSP_NUM(args[1]);
+             return tos;
+         case qspOpNot: /* logical NOT operator, we don't pre-evaluate arguments */
+             args[0] = qspCalculateArgumentValue(expression, argIndices[0], QSP_TYPE_NUM);
+diff --git a/qsp/mathops.h b/qsp/mathops.h
+index a3aefba..965eb26 100644
+--- a/qsp/mathops.h
++++ b/qsp/mathops.h
+@@ -28,7 +28,7 @@
+     #define QSP_MAXITEMS 200
+ 
+     /* Helpers */
+-    #define QSP_TOBOOL(x) ((x) != 0) /* converts a number to a QSP boolean value */
++    #define QSP_TOBOOL(x) (-((x) != 0)) /* classic 5.8: boolean true is -1 (all bits set), not 1 */
+     #define QSP_ISTRUE(x) ((x) != 0) /* checks whether a QSP numeric value represents boolean 'true' */
+     #define QSP_ISFALSE(x) ((x) == 0) /* checks whether a QSP numeric value represents boolean 'false' */
+ 

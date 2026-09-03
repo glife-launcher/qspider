@@ -1,0 +1,20 @@
+diff --git a/qsp/mathops.c b/qsp/mathops.c
+index bb9c4ca..e6668a2 100644
+--- a/qsp/mathops.c
++++ b/qsp/mathops.c
+@@ -672,6 +672,15 @@ QSP_BOOL qspCompileMathExpression(QSPString s, QSP_BOOL isReusable, QSPMathExpre
+                 if (!qspPushOperationToStack(opStack, argStack, &opSp, qspOpNegation)) break;
+                 s.Str += QSP_STATIC_LEN(QSP_NEGATION);
+             }
++            else if (*s.Str == QSP_ADD[0])
++            {
++                /* classic 5.8 compat: unary plus is an identity no-op on any
++                 * value type (modern engine has no unary plus and raises
++                 * QSP_ERR_SYNTAX). Games written for the classic player use
++                 * statements like `+$_str` (Girl Life food_menu). Consume the
++                 * sign and keep expecting a value. */
++                s.Str += QSP_STATIC_LEN(QSP_ADD);
++            }
+             else if (*s.Str == QSP_LRBRACK[0]) /* a subexpression OR a tuple */
+             {
+                 if (!qspPushOperationToStack(opStack, argStack, &opSp, qspOpOpenRoundBracket)) break;

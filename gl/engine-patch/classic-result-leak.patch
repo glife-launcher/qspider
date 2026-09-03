@@ -1,0 +1,67 @@
+diff --git a/qsp/locations.c b/qsp/locations.c
+index 3b1786d..c5c6b54 100644
+--- a/qsp/locations.c
++++ b/qsp/locations.c
+@@ -211,7 +211,7 @@ void qspExecLocByNameWithArgs(QSPString name, QSPVariant *args, QSP_TINYINT args
+     }
+     if (!(varArgs = qspVarReference(QSP_STATIC_STR(QSP_VARARGS), QSP_TRUE))) return;
+     if (!(varRes = qspVarReference(QSP_STATIC_STR(QSP_VARRES), QSP_TRUE))) return;
+-    qspAllocateSavedVarsGroupWithArgs(varArgs, varRes);
++    qspAllocateSavedVarsGroupWithArgs(varArgs, res ? varRes : 0); /* classic 5.8: isolate RESULT only when a return value is requested */
+     qspSetArgs(varArgs, args, argsCount, toMoveArgs);
+     oldLocationState = qspLocationState;
+     qspExecLocByIndex(locInd, QSP_FALSE);
+diff --git a/qsp/statements.c b/qsp/statements.c
+index ff4292c..f849146 100644
+--- a/qsp/statements.c
++++ b/qsp/statements.c
+@@ -664,7 +664,7 @@ void qspExecStringAsCodeWithArgs(QSPString s, QSPVariant *args, QSP_TINYINT coun
+     int oldLocationState, linesCount;
+     if (!(varArgs = qspVarReference(QSP_STATIC_STR(QSP_VARARGS), QSP_TRUE))) return;
+     if (!(varRes = qspVarReference(QSP_STATIC_STR(QSP_VARRES), QSP_TRUE))) return;
+-    qspAllocateSavedVarsGroupWithArgs(varArgs, varRes);
++    qspAllocateSavedVarsGroupWithArgs(varArgs, res ? varRes : 0); /* classic 5.8: isolate RESULT only when a return value is requested */
+     qspSetArgs(varArgs, args, count, QSP_TRUE);
+     linesCount = qspPreprocessData(s, &strs);
+     oldLocationState = qspLocationState;
+diff --git a/qsp/variables.h b/qsp/variables.h
+index 8caeb0d..24acb0b 100644
+--- a/qsp/variables.h
++++ b/qsp/variables.h
+@@ -167,14 +167,32 @@
+     INLINE int qspAllocateSavedVarsGroupWithArgs(QSPVar *varArgs, QSPVar *varRes)
+     {
+         QSPVar *varsList;
++        int varsCount;
+         int groupInd = qspAllocateSavedVarsGroup();
+-        varsList = (QSPVar *)malloc(2 * sizeof(QSPVar)); /* ARGS & RESULT */
++        /* Classic QSP 5.8 compatibility patch: ARGS is always call-local, but
++         * RESULT is call-local ONLY when the call expects a return value
++         * (FUNC / DYNEVAL - callers pass varRes then). For GOSUB and plain
++         * DYNAMIC (varRes == NULL) RESULT behaves like a global variable, as in
++         * classic 5.8: a value assigned inside the callee stays visible to the
++         * caller after the call returns. Games written for the classic player
++         * (e.g. Girl Life) rely on both halves: jobs.qsrc's is_arrival_time is
++         * a FUNC whose callee sets RESULT via an inner GS (needs the GS leak
++         * within the FUNC frame), while stat_display_menu.qsrc accumulates
++         * HTML into $RESULT across nested FUNC row builders (needs FUNC calls
++         * to save/restore the caller's accumulator, or rows duplicate).
++         * FUNC's return value still works: the call site reads the callee's
++         * RESULT via qspApplyResult before the restore. */
++        varsCount = (varRes ? 2 : 1);
++        varsList = (QSPVar *)malloc(varsCount * sizeof(QSPVar)); /* ARGS (+ RESULT for FUNC/DYNEVAL) */
+         varsList[0].Name = qspCopyToNewText(varArgs->Name);
+         qspMoveVar(&varsList[0], varArgs);
+-        varsList[1].Name = qspCopyToNewText(varRes->Name);
+-        qspMoveVar(&varsList[1], varRes);
++        if (varRes)
++        {
++            varsList[1].Name = qspCopyToNewText(varRes->Name);
++            qspMoveVar(&varsList[1], varRes);
++        }
+         qspSavedVarGroups[groupInd].Vars = varsList;
+-        qspSavedVarGroups[groupInd].VarsCount = 2;
++        qspSavedVarGroups[groupInd].VarsCount = varsCount;
+         return groupInd;
+     }
+ 

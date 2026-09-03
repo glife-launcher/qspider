@@ -1,0 +1,72 @@
+# Girl Life launcher: build the standalone player and publish it as a release
+# asset. The launcher's `launcher/scripts/fetch-player.sh` curls exactly one
+# file -- `qspider-player-standalone.zip` -- so this workflow is the whole
+# contract between the fork and the launcher's CI.
+#
+# This is OUR workflow. Upstream's demo/main/prerelease workflows are left in
+# the tree untouched (they are merge surface) and are disabled in the fork's
+# Actions settings instead.
+name: GL player
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'gl-v*'
+
+env:
+  # upstream's `prepare` script runs husky; it has nothing to do on a runner
+  HUSKY: 0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The node version is pinned in .nvmrc, not in package.json: package.json
+      # is upstream's file and every line we add to it is a merge conflict.
+      # Our parity evidence against the vendored player is content-hashed asset
+      # filenames, so the toolchain has to be the one that produced them.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build player + swap engine + zip
+        run: bash gl/tools/build-player.sh
+
+      - name: Upload build artifact (manual runs)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: qspider-player-standalone
+          path: dist/qspider-player-standalone.zip
+          if-no-files-found: error
+
+      - name: Publish release (tag runs)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          SUM="$(sha256sum dist/qspider-player-standalone.zip | cut -d' ' -f1)"
+          NODE_VERSION="$(cat .nvmrc)"
+          UPSTREAM_VERSION="$(node -p "require('./package.json').version")"
+          gh release create "$TAG" dist/qspider-player-standalone.zip \
+            --title "Player $TAG" \
+            --notes "$(printf '%s\n' \
+              "qspider standalone player built from this fork for the Girl Life launcher." \
+              "" \
+              "- upstream base: \`v$UPSTREAM_VERSION\` (see gl/README.md)" \
+              "- engine: our classic-semantics qsp-engine (gl/engine-patch/), swapped over the stock build" \
+              "- node: $NODE_VERSION (pinned in .nvmrc)" \
+              "" \
+              "sha256  qspider-player-standalone.zip" \
+              "\`$SUM\`")"
