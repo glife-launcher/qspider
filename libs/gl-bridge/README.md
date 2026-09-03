@@ -34,4 +34,23 @@ which runs after that commit.
 | `keys.ts` | `bindKey()` / `unbindKey()` over qspider's own Mousetrap |
 | `saves.ts` | save/load/slots events and `refreshSlots()` |
 | `install.ts` | builds the global; runs at module init |
-| `gl-bridge.tsx` | the mounted component and the after-commit drain |
+| `gl-bridge.tsx` | the mounted component, the after-commit drain, and the game-open re-attach |
+| `gl.css` | C5a: `qsp-game-root { isolation: isolate }`. Not JavaScript and not part of the global, but it is a player capability a theme cannot give itself; imported once from `apps/player-standalone/src/main.tsx` |
+
+## The two things that are NOT here
+
+C13 (the game's palette custom properties also land on `:root`) and C1
+(`<script-link>` executes) are behaviour changes inside upstream's own
+components, `theme-core/css-variables.tsx` and `theme-core/script-links.tsx`.
+They are listed in `gl/README.md` with the rest of our footprint.
+
+## A watch outlives `qspApi$` but not a game
+
+`watchVar` attaches through `qspApi$.watch`, which covers "the engine does not
+exist yet". It does not cover "a game was opened": the engine outlives a game
+and builds a fresh variable table for each one, dropping every watcher
+registered against the previous table, while `qspApi$` itself never changes.
+So `<GlBridge />` — which is mounted by the game opening — calls
+`reattachVars()` in its first effect. Without it a watch registered by a
+theme's boot code delivered one value and then went silent for the session,
+with nothing to see anywhere.

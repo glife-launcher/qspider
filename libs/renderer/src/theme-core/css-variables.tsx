@@ -49,7 +49,7 @@ const QspCssVariableResource: React.FC<{ name: string; url: string; withSize: bo
   const { name } = props;
 
   const sizeDefinitions = props.withSize ? `${name}-w: ${size.width}px; ${name}-h: ${size.height}px` : '';
-  const content = `qsp-game-root, #portal-container {${name}: ${url ? `url("${url}")` : 'none'};${sizeDefinitions}}`;
+  const content = `:root, qsp-game-root, #portal-container {${name}: ${url ? `url("${url}")` : 'none'};${sizeDefinitions}}`;
   return <style>{content}</style>;
 };
 
@@ -96,6 +96,6 @@ export const QspCssVariable: React.FC<{ definition: CssVarDefinition }> = ({ def
     rules.push(`${definition.name}: ${value}`);
   }
   if (!rules.length) return null;
-  const content = `qsp-game-root, #portal-container {${rules.join('; ')}}`;
+  const content = `:root, qsp-game-root, #portal-container {${rules.join('; ')}}`;
   return <style>{content}</style>;
 };

@@ -33,27 +33,68 @@ export function readVarAt(name: string, index: number): GlVarValue {
   return (value as GlVarValue) || defaultFor(name);
 }
 
+interface VarWatch {
+  name: string;
+  key: string;
+  forward: (value: unknown) => void;
+  detach?: () => void;
+  stopWatching?: () => void;
+}
+
+/** Every live watch, so `reattachVars()` can move them all to a new game. */
+const watches = new Set<VarWatch>();
+
+function attach(watch: VarWatch): void {
+  watch.detach?.();
+  watch.detach = undefined;
+  const api = qspApi$.value;
+  if (!api) return;
+  watch.detach = watch.key
+    ? api.watchVariableByKey(watch.name, watch.key, watch.forward)
+    : api.watchVariable(watch.name, watch.forward);
+}
+
 /**
  * Watch one key. An empty `key` watches the whole variable.
  *
- * The engine may not exist yet when a theme boots, so this re-attaches through
+ * The engine may not exist yet when a theme boots, so this attaches through
  * `qspApi$.watch` rather than failing silently — the same shape the player's
  * own `createVariableAtom` uses.
+ *
+ * That alone is not enough, and the failure it leaves is silent. `qspApi$`
+ * holds the engine, and the engine outlives a game: opening one does not
+ * replace the atom, so nothing re-runs the callback above — while the engine
+ * itself builds a fresh variable table for the new game and drops every
+ * watcher registered against the old one. A watch made at theme-boot time
+ * therefore delivered its first value and then went quiet for the rest of the
+ * session. `reattachVars()` is the missing half; `<GlBridge />` calls it on
+ * the game-open transition it is mounted by.
  */
 export function watchVar(name: string, key: string, cb: (value: GlVarValue) => void): () => void {
-  let detach: (() => void) | undefined;
-  const stopWatching = qspApi$.watch((api) => {
-    detach?.();
-    detach = undefined;
-    if (!api) return;
-    const forward = (value: unknown): void => cb((value as GlVarValue) || defaultFor(name));
-    detach = key ? api.watchVariableByKey(name, key, forward) : api.watchVariable(name, forward);
-  });
-  return (): void => {
-    stopWatching();
-    detach?.();
-    detach = undefined;
+  const watch: VarWatch = {
+    name,
+    key,
+    forward: (value: unknown): void => cb((value as GlVarValue) || defaultFor(name)),
   };
+  watches.add(watch);
+  watch.stopWatching = qspApi$.watch(() => attach(watch));
+  return (): void => {
+    watches.delete(watch);
+    watch.stopWatching?.();
+    watch.detach?.();
+    watch.detach = undefined;
+  };
+}
+
+/**
+ * Re-attach every live watch to the engine's current variable table.
+ *
+ * Called once per game open. Re-attaching delivers the key's current value
+ * again, which is what a listener registered before the game existed was
+ * missing: without it, the first change after the game loads never arrives.
+ */
+export function reattachVars(): void {
+  for (const watch of watches) attach(watch);
 }
 
 /**

@@ -1,0 +1,23 @@
+/*
+ * C5a — the game's inline `z-index` cannot escape the player.
+ *
+ * QSP games position things by hand, and the HTML they emit carries inline
+ * `z-index` values (Girl Life's overlay-mode status bars ship a three-layer
+ * stack at `z-index: 1` and `2`). `#portal-container` — where every dialog the
+ * player itself raises is rendered, including its own save/load screen — is
+ * `position: static` with `z-index: auto` and has no CSS rule of its own, so it
+ * covers the page by DOCUMENT ORDER alone. Document order loses to a positive
+ * `z-index` in the same stacking context, and until this file there was no
+ * stacking context between the game's content and the root: a game element at
+ * `z-index: 1` painted over the player's own dialogs.
+ *
+ * `isolation: isolate` is the narrow cure. It makes `qsp-game-root` a stacking
+ * context, which confines every z-index the game writes to the inside of the
+ * player, and it does that WITHOUT giving the game root a z-index of its own —
+ * so nothing else moves. Raising `#portal-container` instead would have been
+ * the wider change: it would reorder the portal against every other
+ * body-mounted element on the page, including a theme's own widgets.
+ */
+qsp-game-root {
+  isolation: isolate;
+}

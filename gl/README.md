@@ -1,9 +1,9 @@
 # `gl/` — the Girl Life launcher's fork of qspider
 
 This repository is a fork of [QSPFoundation/qspider](https://github.com/QSPFoundation/qspider)
-(MIT). Almost everything of ours lives in files upstream does not have; the
-list of what we changed *inside* upstream's own files is three lines in one
-file, and it is enumerated below rather than described.
+(MIT). Almost everything of ours lives in files upstream does not have; what
+we changed *inside* upstream's own files is four small edits in four files,
+and they are enumerated below rather than described.
 
 It exists for two reasons.
 
@@ -18,7 +18,11 @@ state changed, no way to read a game variable without rendering an element and
 scraping it, no way to run engine code without clicking a button it drew
 itself, and no way to know which dialog is open except by measuring the page.
 `libs/gl-bridge/` publishes those as `window.qspiderGl` — see that library's
-own README. Nothing in it knows which game is running: no variable names, no
+own README. Three things a library cannot publish are fixed in the player
+itself: the game's palette custom properties now also land on `:root` (so a
+theme's body-mounted widgets inherit them), `qsp-game-root` is a stacking
+context (so a game's inline `z-index` cannot paint over the player's own
+dialogs), and a theme's `<script-link>` actually executes. Nothing in it knows which game is running: no variable names, no
 setting keys, no location ids. A theme detects it with one integer
 (`window.qspiderGl.contract`, currently **1**) and must keep working on stock
 qspider, where the global is simply absent.
@@ -88,12 +92,16 @@ own directory:
 | path | what | upstream commits on it since v1.3.1 |
 |---|---|---|
 | `.nvmrc` | new file: the node pin | — (upstream has no such file) |
-| `libs/gl-bridge/` | new library: `window.qspiderGl`, the theme contract. No upstream file inside it | — |
-| `libs/renderer/src/game-runner.tsx` | **the only edited upstream file**: an import, a lint exemption for it, and `<GlBridge />` in the JSX list | 1 |
+| `libs/gl-bridge/` | new library: `window.qspiderGl`, the theme contract, plus `gl.css`. No upstream file inside it | — |
+| `libs/renderer/src/game-runner.tsx` | an import, a lint exemption for it, and `<GlBridge />` in the JSX list — **3 lines** | 1 |
+| `libs/renderer/src/theme-core/css-variables.tsx` | `:root, ` prefixed to the two generated selector strings, so a theme's body-mounted widgets inherit the game's colours — **2 tokens** | 0 |
+| `libs/renderer/src/theme-core/script-links.tsx` | the component body: it now creates the `<script>` imperatively in an effect, because react-dom deliberately builds `<script>` elements that cannot execute. The tag's public shape is unchanged | 0 |
+| `apps/player-standalone/src/main.tsx` | one `import '…/gl-bridge/src/gl.css'` and its lint exemption — **2 lines** | 0 |
 
 No upstream file is reformatted, re-ordered or tidied, `package.json` and
 `package-lock.json` are untouched, and nx is not bumped — so an upstream tag
-still merges into `gl-main` with a conflict surface of one JSX list.
+still merges into `gl-main` with a conflict surface of one JSX list, one
+component body and two one-line insertions.
 
 **2. The engine export check.** `gl/tools/build-player.sh` swaps our patched
 wasm over the stock one by filename glob and then runs

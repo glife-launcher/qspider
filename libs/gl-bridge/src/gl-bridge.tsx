@@ -21,6 +21,7 @@ import { useEffect } from 'react';
 import { drainChanges, queueChange } from './events';
 import { overlay, syncAttributes } from './overlay';
 import { installSaveHooks } from './saves';
+import { reattachVars } from './vars';
 import { installBridge } from './install';
 
 installBridge();
@@ -63,6 +64,13 @@ export const GlBridge: React.FC = () => {
 
   useEffect(() => {
     installSaveHooks();
+    // This component is mounted inside `<qsp-game-root>`, so its first effect
+    // IS the game-open transition — and the engine has already opened and
+    // restarted the game by the time `currentGameEntry$` is set, which is what
+    // renders us. Any watch registered before that (a theme's boot code, for
+    // instance) is attached to the variable table the engine has just replaced,
+    // so it is moved here, before `game-started` tells anyone to look.
+    reattachVars();
     queueChange({ what: 'game-started' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
