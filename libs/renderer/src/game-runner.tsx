@@ -21,6 +21,8 @@ import { QspCSSVariables } from './theme-core/css-variables';
 import { WaitLock } from './wait-lock';
 import { QspCSSLinks } from './theme-core/css-links';
 import { QspScriptLinks } from './theme-core/script-links';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { GlBridge } from '../../gl-bridge/src';
 
 const handler = throttle((e: KeyboardEvent): void => {
   if (e.key === 'Escape') {
@@ -57,6 +59,7 @@ export const GameRunner: React.FC = () => {
       <WaitLock />
       <QspErrorAlert />
       <QspScriptLinks />
+      <GlBridge />
     </qsp-game-root>
   );
 };

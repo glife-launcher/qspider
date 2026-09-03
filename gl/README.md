@@ -1,21 +1,29 @@
 # `gl/` — the Girl Life launcher's fork of qspider
 
 This repository is a fork of [QSPFoundation/qspider](https://github.com/QSPFoundation/qspider)
-(MIT). Everything upstream is unchanged; everything of ours lives under `gl/`
-plus two files outside it — `.nvmrc` and `.github/workflows/gl-player.yml`.
-No upstream file was edited, so upstream tags merge cleanly.
+(MIT). Almost everything of ours lives in files upstream does not have; the
+list of what we changed *inside* upstream's own files is three lines in one
+file, and it is enumerated below rather than described.
 
-It exists for one reason: the
-[Girl Life launcher](https://github.com/glife-launcher/GLreleases) ships the
-qspider **standalone player**, and it ships it with a patched QSP engine. Until
-now that patch was applied to a downloaded upstream release zip by a script in
-the launcher repo. Here the player is built and patched in one place, and the
-launcher downloads the finished zip.
+It exists for two reasons.
 
-Upstream is currently pinned at **v1.3.1**. A local build of that tag reproduces
-upstream's release zip byte-for-byte apart from the engine we deliberately
-replace, which is what makes the hashed asset filenames usable as parity
-evidence.
+**The engine.** The [Girl Life launcher](https://github.com/glife-launcher/GLreleases)
+ships the qspider **standalone player**, and it ships it with a patched QSP
+engine. That patch used to be applied to a downloaded upstream release zip by a
+script in the launcher repo. Here the player is built and patched in one place,
+and the launcher downloads the finished zip.
+
+**The theme contract.** A qspider theme has no way to be told that the game
+state changed, no way to read a game variable without rendering an element and
+scraping it, no way to run engine code without clicking a button it drew
+itself, and no way to know which dialog is open except by measuring the page.
+`libs/gl-bridge/` publishes those as `window.qspiderGl` — see that library's
+own README. Nothing in it knows which game is running: no variable names, no
+setting keys, no location ids. A theme detects it with one integer
+(`window.qspiderGl.contract`, currently **1**) and must keep working on stock
+qspider, where the global is simply absent.
+
+Upstream is currently pinned at **v1.3.1**.
 
 ## Branches and remotes
 
@@ -31,8 +39,9 @@ never the other way round. We do not maintain a branch that tracks
 
 We do not edit upstream files unless a change requires it. In particular
 `package.json` and `package-lock.json` are upstream's — the node version is
-pinned in `.nvmrc` rather than in an `engines` field for exactly that reason,
-and regenerating the lock file invalidates the byte-parity evidence above.
+pinned in `.nvmrc` rather than in an `engines` field for exactly that reason —
+and no dependency is added: everything we build uses React, xoid and Mousetrap,
+which the tree already has.
 
 ## Cutting a player release
 
@@ -55,6 +64,49 @@ before tagging.
 Upstream's own `demo.yml`, `main.yml` and `prerelease.yml` are kept in the tree
 (deleting them would be a permanent merge conflict) and are **disabled** in this
 fork's Actions settings.
+
+## What differs from upstream, and how that is checked
+
+**There is no byte-for-byte parity claim, and there deliberately is not one.**
+Until the bridge landed, the fork was upstream plus an engine swap, and a local
+build reproduced upstream's release zip apart from that one file. A fork whose
+whole point is to expose capabilities upstream does not expose cannot keep that
+property, and a claim kept past the day it stopped being true is worse than no
+claim. What replaces it is three things that can each be re-run.
+
+**1. The named list of files that differ from upstream `v1.3.1`.** Produce it,
+do not trust this table:
+
+```sh
+git diff --stat v1.3.1..gl-main          # tracked changes, ours included
+git diff --name-only v1.3.1..gl-main | grep -v '^gl/' | grep -v '^\.github/workflows/gl-player\.yml$'
+```
+
+Everything the second command prints is the whole of our footprint outside our
+own directory:
+
+| path | what | upstream commits on it since v1.3.1 |
+|---|---|---|
+| `.nvmrc` | new file: the node pin | — (upstream has no such file) |
+| `libs/gl-bridge/` | new library: `window.qspiderGl`, the theme contract. No upstream file inside it | — |
+| `libs/renderer/src/game-runner.tsx` | **the only edited upstream file**: an import, a lint exemption for it, and `<GlBridge />` in the JSX list | 1 |
+
+No upstream file is reformatted, re-ordered or tidied, `package.json` and
+`package-lock.json` are untouched, and nx is not bumped — so an upstream tag
+still merges into `gl-main` with a conflict surface of one JSX list.
+
+**2. The engine export check.** `gl/tools/build-player.sh` swaps our patched
+wasm over the stock one by filename glob and then runs
+`gl/tools/check-engine-exports.mjs`, which parses the wasm export section and
+the emscripten glue's export-binding chain and exits 1 if the glue reads a name
+the wasm does not export. That is the gate on every qspider bump.
+
+**3. The player is driven through a real game by the launcher's headless gate
+battery** on a stand laid from the built zip, including a driver written
+against this contract and, as its control, the same driver run against a stock
+build — where it asserts the contract is **absent**. A theme written for the
+contract must keep working on stock qspider, and that control is what keeps it
+honest.
 
 ## The engine patch
 
@@ -79,15 +131,7 @@ Rebuilding the engine from source needs emscripten, which is not set up here.
 
 ## The node pin
 
-Upstream pins nothing: no `engines`, no `packageManager`, no `.nvmrc`. Our
-parity evidence is content-hashed filenames, and an unpinned toolchain is the
-one thing that can silently invalidate it, so `.nvmrc` carries the exact version
-the parity build used (**24.2.0**) and the workflow reads it through
-`setup-node`'s `node-version-file`. Change it only deliberately, and re-run the
-parity diff afterwards:
-
-```sh
-bash gl/tools/build-player.sh
-unzip -q dist/qspider-player-standalone.zip -d /tmp/player-check
-diff -rq /tmp/player-check <path to a known-good launcher/player>
-```
+Upstream pins nothing: no `engines`, no `packageManager`, no `.nvmrc`. An
+unpinned toolchain makes a build unreproducible for no gain, so `.nvmrc`
+carries the exact version our builds use (**24.2.0**) and the workflow reads it
+through `setup-node`'s `node-version-file`. Change it only deliberately.
