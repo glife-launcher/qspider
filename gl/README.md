@@ -22,8 +22,9 @@ own README. Three things a library cannot publish are fixed in the player
 itself: the game's palette custom properties now also land on `:root` (so a
 theme's body-mounted widgets inherit them), `qsp-game-root` is a stacking
 context (so a game's inline `z-index` cannot paint over the player's own
-dialogs), and a theme's `<script-link>` actually executes. Nothing in it knows which game is running: no variable names, no
-setting keys, no location ids. A theme detects it with one integer
+dialogs), and a theme's `<script-link>` actually executes. Nothing in any of
+it knows which game is running: no variable names, no setting keys, no
+location ids. A theme detects it with one integer
 (`window.qspiderGl.contract`, currently **1**) and must keep working on stock
 qspider, where the global is simply absent.
 
@@ -96,7 +97,17 @@ own directory:
 | `libs/renderer/src/game-runner.tsx` | an import, a lint exemption for it, and `<GlBridge />` in the JSX list — **3 lines** | 1 |
 | `libs/renderer/src/theme-core/css-variables.tsx` | `:root, ` prefixed to the two generated selector strings, so a theme's body-mounted widgets inherit the game's colours — **2 tokens** | 0 |
 | `libs/renderer/src/theme-core/script-links.tsx` | the component body: it now creates the `<script>` imperatively in an effect, because react-dom deliberately builds `<script>` elements that cannot execute. The tag's public shape is unchanged | 0 |
-| `apps/player-standalone/src/main.tsx` | one `import '…/gl-bridge/src/gl.css'` and its lint exemption — **2 lines** | 0 |
+| `apps/player-standalone/src/main.tsx` | one `import '…/gl-bridge/src/gl.css'` and its lint exemption — **2 lines** | 1 |
+
+The last column dates the moment it was written, so regenerate it rather than
+trusting it:
+
+```sh
+git fetch upstream
+for f in $(git diff --name-only v1.3.1..gl-main | grep -v '^gl/' | grep -v gl-player.yml); do
+  printf '%s\t%s\n' "$(git log --oneline v1.3.1..upstream/main -- "$f" | wc -l)" "$f"
+done
+```
 
 No upstream file is reformatted, re-ordered or tidied, `package.json` and
 `package-lock.json` are untouched, and nx is not bumped — so an upstream tag
