@@ -2,7 +2,7 @@
 
 This repository is a fork of [QSPFoundation/qspider](https://github.com/QSPFoundation/qspider)
 (MIT). Almost everything of ours lives in files upstream does not have; what
-we changed *inside* upstream's own files is four small edits in four files,
+we changed *inside* upstream's own files is five small edits in five files,
 and they are enumerated below rather than described.
 
 It exists for two reasons.
@@ -18,13 +18,15 @@ state changed, no way to read a game variable without rendering an element and
 scraping it, no way to run engine code without clicking a button it drew
 itself, and no way to know which dialog is open except by measuring the page.
 `libs/gl-bridge/` publishes those as `window.qspiderGl` — see that library's
-own README. Three things a library cannot publish are fixed in the player
+own README. Four things a library cannot publish are fixed in the player
 itself: the game's palette custom properties now also land on `:root` (so a
 theme's body-mounted widgets inherit them), `qsp-game-root` is a stacking
 context (so a game's inline `z-index` cannot paint over the player's own
-dialogs), and a theme's `<script-link>` actually executes. Nothing in any of
-it knows which game is running: no variable names, no setting keys, no
-location ids. A theme detects it with one integer
+dialogs), a theme's `<script-link>` actually executes, and a link the game
+wrote as `<a href="exec:…">` keeps that code in a `data-gl-exec` attribute
+instead of rendering as a bare `#` whose meaning only a React handler knows.
+Nothing in any of it knows which game is running: no variable names, no
+setting keys, no location ids. A theme detects it with one integer
 (`window.qspiderGl.contract`, currently **1**) and must keep working on stock
 qspider, where the global is simply absent.
 
@@ -97,6 +99,7 @@ own directory:
 | `libs/renderer/src/game-runner.tsx` | an import, a lint exemption for it, and `<GlBridge />` in the JSX list — **3 lines** | 1 |
 | `libs/renderer/src/theme-core/css-variables.tsx` | `:root, ` prefixed to the two generated selector strings, so a theme's body-mounted widgets inherit the game's colours — **2 tokens** | 0 |
 | `libs/renderer/src/theme-core/script-links.tsx` | the component body: it now creates the `<script>` imperatively in an effect, because react-dom deliberately builds `<script>` elements that cannot execute. The tag's public shape is unchanged | 0 |
+| `libs/renderer/src/transformers/base/link.tsx` | the rendered exec anchor carries the `exec:` payload verbatim as `data-gl-exec`, because `href` is always `#` and the code is otherwise only in a React handler — **one attribute**, no behaviour change, absent on the action form | 0 |
 | `apps/player-standalone/src/main.tsx` | one `import '…/gl-bridge/src/gl.css'` and its lint exemption — **2 lines** | 1 |
 
 The last column dates the moment it was written, so regenerate it rather than
@@ -112,7 +115,7 @@ done
 No upstream file is reformatted, re-ordered or tidied, `package.json` and
 `package-lock.json` are untouched, and nx is not bumped — so an upstream tag
 still merges into `gl-main` with a conflict surface of one JSX list, one
-component body and two one-line insertions.
+component body, one attribute and two one-line insertions.
 
 **2. The engine export check.** `gl/tools/build-player.sh` swaps our patched
 wasm over the stock one by filename glob and then runs

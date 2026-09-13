@@ -22,9 +22,13 @@ export const Link: React.FC<{
     [exec, act],
   );
   const [, style, attributes] = useAttributes(attrs, 'a');
+  // `data-gl-exec` carries the `exec:` payload the rendered anchor otherwise
+  // drops (href is always `#`), so a theme can read what a link does instead of
+  // guessing from its caption. Verbatim, unparsed, and absent on the action
+  // form of this component (`act`), where there is no code to carry.
   return (
     // eslint-disable-next-line jsx-a11y/anchor-is-valid
-    <a {...attributes} style={style} href="#" onClick={onClick}>
+    <a {...attributes} style={style} href="#" data-gl-exec={exec} onClick={onClick}>
       {children}
     </a>
   );
