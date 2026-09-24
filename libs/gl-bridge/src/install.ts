@@ -6,6 +6,7 @@ import { actions, execAction, selectAction } from './actions';
 import { bindKey, unbindKey } from './keys';
 import { refreshSlots, slots } from './saves';
 import { installWatchers, isReady } from './watchers';
+import { portals } from './portals';
 import { QspiderGl } from './types';
 
 /**
@@ -15,8 +16,10 @@ import { QspiderGl } from './types';
  * boot: 0 is stock qspider. It is one monotonically increasing integer rather
  * than a dozen `typeof` sniffs, so a half-built player cannot present a mixed
  * surface and a theme cannot drift into a dozen independent branches.
+ *
+ * 2 — C15, `portals`.
  */
-export const CONTRACT = 1;
+export const CONTRACT = 2;
 
 let installed = false;
 
@@ -57,6 +60,7 @@ export function installBridge(): void {
     unbindKey,
     slots,
     refreshSlots,
+    portals,
   };
   window.qspiderGl = api;
 }

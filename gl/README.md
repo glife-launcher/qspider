@@ -2,7 +2,7 @@
 
 This repository is a fork of [QSPFoundation/qspider](https://github.com/QSPFoundation/qspider)
 (MIT). Almost everything of ours lives in files upstream does not have; what
-we changed *inside* upstream's own files is five small edits in five files,
+we changed *inside* upstream's own files is seven small edits in seven files,
 and they are enumerated below rather than described.
 
 It exists for two reasons.
@@ -25,10 +25,21 @@ context (so a game's inline `z-index` cannot paint over the player's own
 dialogs), a theme's `<script-link>` actually executes, and a link the game
 wrote as `<a href="exec:…">` keeps that code in a `data-gl-exec` attribute
 instead of rendering as a bare `#` whose meaning only a React handler knows.
+One contract point in the global also needs the player's own panes to cooperate:
+C15's portals are decided by the library, but the stats pane and the two lists
+render through it only because `stats.tsx` and `default-transformers.tsx` hand
+it their content (listed below).
 Nothing in any of it knows which game is running: no variable names, no
 setting keys, no location ids. A theme detects it with one integer
-(`window.qspiderGl.contract`, currently **1**) and must keep working on stock
+(`window.qspiderGl.contract`, currently **2**) and must keep working on stock
 qspider, where the global is simply absent.
+
+The contract points in the global, by the contract number that brought them:
+
+| contract | points |
+|---|---|
+| 1 | C2 events, C3 variables and `exec`, C4 overlay, C6 panel content, C8 hotkeys, C9 actions, C10 panel attributes, C11 `ready`, C14 save events |
+| 2 | **C15 per-section portals** — `portals.set(spec)` / `portals.clear()`: the player renders each section of the stats pane, and the action and object lists, into elements the theme names. A section is a *run*: a node the theme's `header` function recognises starts it, every following top-level node belongs to it until the next header, and the run before the first header is the section `''`. Whatever has no container in the document renders in place, in order; with no spec set the pane renders exactly as upstream. `libs/gl-bridge/README.md` has the API |
 
 Upstream is currently pinned at **v1.3.1**.
 
@@ -99,6 +110,8 @@ own directory:
 | `libs/renderer/src/game-runner.tsx` | an import, a lint exemption for it, and `<GlBridge />` in the JSX list — **3 lines** | 1 |
 | `libs/renderer/src/theme-core/css-variables.tsx` | `:root, ` prefixed to the two generated selector strings, so a theme's body-mounted widgets inherit the game's colours — **2 tokens** | 0 |
 | `libs/renderer/src/theme-core/script-links.tsx` | the component body: it now creates the `<script>` imperatively in an effect, because react-dom deliberately builds `<script>` elements that cannot execute. The tag's public shape is unchanged | 0 |
+| `libs/renderer/src/theme-core/stats.tsx` | C15: `<qsp-stats-content>` renders `<GlStatsSections content={content} />` instead of `<Markup content={content} />`; the now-unused `Markup` import is replaced by ours and its lint exemption — **+3 / -2 lines**. With no portal spec set, `GlStatsSections` returns that same `<Markup>` | 0 |
+| `libs/renderer/src/transformers/default-transformers.tsx` | C15: `qsp-actions-list` and `qsp-objects-list` are wrapped in `<GlListPortal slot="…">`, plus one import and its lint exemption at the TOP of the file (upstream's one later commit adds imports near line 57 and entries at the end, so neither hunk meets it) — **2 lines + 2 wraps** | 1 |
 | `libs/renderer/src/transformers/base/link.tsx` | the rendered exec anchor carries the `exec:` payload verbatim as `data-gl-exec`, because `href` is always `#` and the code is otherwise only in a React handler — **one attribute**, no behaviour change, absent on the action form | 0 |
 | `apps/player-standalone/src/main.tsx` | one `import '…/gl-bridge/src/gl.css'` and its lint exemption — **2 lines** | 1 |
 
@@ -115,7 +128,8 @@ done
 No upstream file is reformatted, re-ordered or tidied, `package.json` and
 `package-lock.json` are untouched, and nx is not bumped — so an upstream tag
 still merges into `gl-main` with a conflict surface of one JSX list, one
-component body, one attribute and two one-line insertions.
+component body, one attribute, one swapped JSX element, two wrapped transformer
+entries and four one-line insertions.
 
 **2. The engine export check.** `gl/tools/build-player.sh` swaps our patched
 wasm over the stock one by filename glob and then runs

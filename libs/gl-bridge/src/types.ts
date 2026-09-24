@@ -72,6 +72,48 @@ export interface GlBindKeyOptions {
 
 export type GlListener = (detail: GlChangeDetail) => void;
 
+/**
+ * C15 — what a theme's `header` function is shown about one top-level node of
+ * the stats pane. Plain data: the theme decides without touching React.
+ */
+export interface GlNodeInfo {
+  /**
+   * `'#text'` for a run of loose text, otherwise the lowercase tag name as the
+   * game wrote it (`'a'`, `'div'`, `'table'`…). Read from the markup; if the
+   * player dropped or unwrapped a top-level node the list no longer lines up,
+   * and then a node the player renders as a component of its own may say `''`.
+   */
+  tag: string;
+  /** The node's flattened text, as rendered (not trimmed). */
+  text: string;
+  /** The node's HTML attributes as written, values as strings. */
+  attrs: Record<string, unknown>;
+}
+
+export interface GlStatsPortals {
+  /** A non-empty string starts a section with that key; anything else continues the current one. */
+  header: (info: GlNodeInfo) => string | null;
+  /** Section key → id of the element the section renders into. */
+  targets?: Record<string, string>;
+  /** Id of the element every section `targets` does not name renders into. */
+  rest?: string;
+}
+
+export interface GlPortalSpec {
+  stats?: GlStatsPortals;
+  /** Id of the element the `<qsp-actions-list>` renders into. */
+  actions?: string;
+  /** Id of the element the `<qsp-objects-list>` renders into. */
+  objects?: string;
+}
+
+export interface GlPortals {
+  /** Replace the spec; re-renders at once and re-reads every container by id. */
+  set(spec: GlPortalSpec): void;
+  /** Drop the spec: everything renders in place again. */
+  clear(): void;
+}
+
 export interface QspiderGl {
   /** Monotonic. 0 means stock qspider (the global is absent entirely). */
   readonly contract: number;
@@ -103,6 +145,9 @@ export interface QspiderGl {
 
   slots(): GlSlot[];
   refreshSlots(): Promise<void>;
+
+  /** C15 (contract 2): render stats sections and the action/object lists into theme-owned elements. */
+  readonly portals: GlPortals;
 }
 
 declare global {

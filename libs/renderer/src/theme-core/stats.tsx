@@ -10,8 +10,9 @@ import { useAtom } from '@xoid/react';
 import { ReactNode, useEffect } from 'react';
 import { useAttributes } from '../content/attributes';
 import { scrollContext } from './scrollable';
-import { Markup } from '@qspider/html-renderer';
 import { parsedStatsContent$ } from '../render-state';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { GlStatsSections } from '../../../gl-bridge/src';
 
 export const QspStats: React.FC<{ attrs: Attributes; children: ReactNode }> = ({ attrs, children }) => {
   const [Tag, style, attributes] = useAttributes(attrs, 'qsp-stats');
@@ -46,7 +47,7 @@ export const QspStatsContent: React.FC<{ attrs: Attributes }> = ({ attrs }) => {
   const { content, key } = useAtom(parsedStatsContent$);
   return (
     <Tag style={style} {...attributes} key={key}>
-      <Markup content={content} />
+      <GlStatsSections content={content} />
     </Tag>
   );
 };

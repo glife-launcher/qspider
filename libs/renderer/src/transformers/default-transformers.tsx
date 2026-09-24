@@ -1,4 +1,6 @@
 import { TransformCallback } from '@qspider/html-renderer';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { GlListPortal } from '../../../gl-bridge/src';
 import { Attributes, QUICK_SAVE_KEY, extractAttributes, view$, conditionAttributes } from '@qspider/game-state';
 import {
   QspActions,
@@ -96,7 +98,11 @@ export const defaultTransformers: Record<string, TransformCallback> = {
     return <QspActions attrs={attributes}>{children}</QspActions>;
   },
   'qsp-actions-list'(node, children) {
-    return <QspActionsList attrs={extractAttributes(node)}>{children}</QspActionsList>;
+    return (
+      <GlListPortal slot="actions">
+        <QspActionsList attrs={extractAttributes(node)}>{children}</QspActionsList>
+      </GlListPortal>
+    );
   },
   'qsp-action'(node, children) {
     return <QspActionItem attrs={extractAttributes(node)}>{children}</QspActionItem>;
@@ -115,7 +121,11 @@ export const defaultTransformers: Record<string, TransformCallback> = {
     return <QspObjects attrs={attributes}>{children}</QspObjects>;
   },
   'qsp-objects-list'(node, children) {
-    return <QspObjectsList attrs={extractAttributes(node)}>{children}</QspObjectsList>;
+    return (
+      <GlListPortal slot="objects">
+        <QspObjectsList attrs={extractAttributes(node)}>{children}</QspObjectsList>
+      </GlListPortal>
+    );
   },
   'qsp-object'(node, children) {
     return <QspObjectItem attrs={extractAttributes(node)}>{children}</QspObjectItem>;
