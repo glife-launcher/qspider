@@ -2,7 +2,7 @@
 
 This repository is a fork of [QSPFoundation/qspider](https://github.com/QSPFoundation/qspider)
 (MIT). Almost everything of ours lives in files upstream does not have; what
-we changed *inside* upstream's own files is seven small edits in seven files,
+we changed *inside* upstream's own files is eight small edits in eight files,
 and they are enumerated below rather than described.
 
 It exists for two reasons.
@@ -29,6 +29,12 @@ One contract point in the global also needs the player's own panes to cooperate:
 C15's portals are decided by the library, but the stats pane and the two lists
 render through it only because `stats.tsx` and `default-transformers.tsx` hand
 it their content (listed below).
+One defect is fixed in place, because nothing outside the player can reach it:
+a save names the extra `.qsp` files (a mod's `mod/*.qsp`) its game had open,
+the engine sleeps on a load until the player says each one is open, and an
+include that could not be fetched left it asleep for good — the previous
+screen's actions stayed on screen wired to the save's. The `open_game` handler
+now warns and lets the load go on without that file (listed below).
 Nothing in any of it knows which game is running: no variable names, no
 setting keys, no location ids. A theme detects it with one integer
 (`window.qspiderGl.contract`, currently **2**) and must keep working on stock
@@ -114,6 +120,7 @@ own directory:
 | `libs/renderer/src/transformers/default-transformers.tsx` | C15: `qsp-actions-list` and `qsp-objects-list` are wrapped in `<GlListPortal slot="…">`, plus one import and its lint exemption at the TOP of the file (upstream's one later commit adds imports near line 57 and entries at the end, so neither hunk meets it) — **2 lines + 2 wraps** | 1 |
 | `libs/renderer/src/transformers/base/link.tsx` | the rendered exec anchor carries the `exec:` payload verbatim as `data-gl-exec`, because `href` is always `#` and the code is otherwise only in a React handler — **one attribute**, no behaviour change, absent on the action form | 0 |
 | `apps/player-standalone/src/main.tsx` | one `import '…/gl-bridge/src/gl.css'` and its lint exemption — **2 lines** | 1 |
+| `libs/game-state/src/qsp-api.ts` | the `open_game` handler's body wrapped in a `try`: an include (`isNewGame` false) that cannot be fetched or opened gets a `console.warn` naming the file and the engine's `onOpened()`, so the load goes on without it; a new game file still rejects exactly as upstream. The comment, the `try`, the `catch` block and a second `onOpened()` — **+12 lines**, and the ten-line body re-indented one level (`git diff -w` shows only the twelve). Upstream's two later commits on this file (qsp 5.9.4, the debugger) touch the imports, the API functions, two other handlers and a new `debug` one, not this one: a trial merge of `upstream/main` (2026-10-22) auto-merges the file | 2 |
 
 The last column dates the moment it was written, so regenerate it rather than
 trusting it:
@@ -129,7 +136,7 @@ No upstream file is reformatted, re-ordered or tidied, `package.json` and
 `package-lock.json` are untouched, and nx is not bumped — so an upstream tag
 still merges into `gl-main` with a conflict surface of one JSX list, one
 component body, one attribute, one swapped JSX element, two wrapped transformer
-entries and four one-line insertions.
+entries, one `try` around a handler body and four one-line insertions.
 
 **2. The engine export check.** `gl/tools/build-player.sh` swaps our patched
 wasm over the stock one by filename glob and then runs

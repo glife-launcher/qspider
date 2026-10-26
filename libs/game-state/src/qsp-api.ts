@@ -140,17 +140,29 @@ qspApi$.subscribe((api) => {
       return;
     }
     withCounterPaused(async () => {
-      const source = await fetchBinaryContent(baseUrl$.value, file);
-      let gameSource = source;
-      const isQsps = file.toLowerCase().endsWith('.qsps');
-      if (isQsps) {
-        gameSource = convertQsps(source);
+      // An include that cannot be fetched or opened (a save naming a mod that
+      // is not installed) must not leave the engine asleep: nothing else ever
+      // calls `onOpened()`, so the load would stop half way with the previous
+      // screen's actions still wired to the engine. The engine goes on without
+      // it. A new game file (`isNewGame`) still fails as before.
+      try {
+        const source = await fetchBinaryContent(baseUrl$.value, file);
+        let gameSource = source;
+        const isQsps = file.toLowerCase().endsWith('.qsps');
+        if (isQsps) {
+          gameSource = convertQsps(source);
+        }
+        if (isNewGame) {
+          const path = cleanPath(file);
+          baseUrl$.update((url) => url + path.slice(0, path.lastIndexOf('/') + 1));
+        }
+        api.openGame(gameSource, isNewGame);
+      } catch (e) {
+        if (isNewGame) throw e;
+        console.warn(`Could not open ${file}, continuing without it: ${e instanceof Error ? e.message : String(e)}`);
+        onOpened();
+        return;
       }
-      if (isNewGame) {
-        const path = cleanPath(file);
-        baseUrl$.update((url) => url + path.slice(0, path.lastIndexOf('/') + 1));
-      }
-      api.openGame(gameSource, isNewGame);
       onOpened();
     });
   });
